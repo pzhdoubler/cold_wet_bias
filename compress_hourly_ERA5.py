@@ -78,11 +78,15 @@ def process_file(fpath: Path):
 
     ds = ds.unify_chunks()
 
-    ds = ds.chunk({"latitude": 5, "longitude": 5, TIME_DIM: -1})
+    ds = ds.chunk({"latitude": 17, "longitude": 36, TIME_DIM: -1})
+
+    print("Data ingested")
 
     tp_hourly = fix_precip_accumulation(ds[PRECIP_VAR]) * PRECIP_SCALE
     t2m       = ds[TEMP_VAR]
     stem      = fpath.stem
+
+    print("Precip fixed")
 
     # ── 3-Hourly ──────────────────────────────────────────────────────────────
     ds_3h = xr.Dataset(
@@ -105,6 +109,8 @@ def process_file(fpath: Path):
     # ── Write both outputs in parallel ────────────────────────────────────────
     out_3h    = DIR_3H    / f"{stem}_3h.nc"
     out_daily = DAILY_DIR / f"{stem}_daily.nc"
+
+    print("Writing files")
 
     write_3h    = ds_3h.to_netcdf(out_3h,    compute=False)
     write_daily = ds_daily.to_netcdf(out_daily, compute=False)
