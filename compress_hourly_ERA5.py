@@ -78,13 +78,7 @@ def process_file(fpath: Path):
 
     ds = ds.unify_chunks()
 
-    # Step 2: inspect native chunk sizes
-    tp_native = ds[PRECIP_VAR]
-    print(f"  Native chunks: {dict(tp_native.chunksizes)}")
-
-    # Step 3: rechunk to dask-friendly sizes — keep time whole, chunk spatial dims
-    # Adjust lat/lon chunk sizes if your grid is coarser/finer than 0.1deg ERA5-Land
-    ds = ds.chunk({"latitude": 200, "longitude": 200, TIME_DIM: -1})
+    ds = ds.chunk({"latitude": 5, "longitude": 5, TIME_DIM: -1})
 
     tp_hourly = fix_precip_accumulation(ds[PRECIP_VAR]) * PRECIP_SCALE
     t2m       = ds[TEMP_VAR]
