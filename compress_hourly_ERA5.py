@@ -78,7 +78,7 @@ def process_file(fpath: Path):
 
     ds = ds.unify_chunks()
 
-    ds = ds.chunk({"latitude": 17, "longitude": 36, TIME_DIM: -1})
+    ds = ds.chunk({"latitude": 144, "longitude": 181, TIME_DIM: -1})
 
     print("Data ingested")
 
