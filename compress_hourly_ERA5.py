@@ -4,6 +4,7 @@ from pathlib import Path
 import dask
 from dask.diagnostics import ProgressBar
 import time
+import pandas as pd
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 HOURLY_DIR   = Path("/ocean/projects/ees210011p/shared/ERA5_land/hourly")
@@ -70,72 +71,80 @@ def process_precip_daily(tp_hourly: xr.DataArray) -> xr.DataArray:
     tp_daily.attrs["long_name"] = "Daily total precipitation"
     return tp_daily
 
-def process_file(fpath: Path):
-    print(f"\nProcessing: {fpath.name}")
-
-    # Step 1: open with native on-disk chunks to avoid misalignment warnings
-    ds = xr.open_dataset(fpath, chunks={})
-
-    ds = ds.unify_chunks()
-
-    ds = ds.chunk({"latitude": 144, "longitude": 181, TIME_DIM: -1})
-
-    print("Data ingested")
-
-    tp_hourly = fix_precip_accumulation(ds[PRECIP_VAR]) * PRECIP_SCALE
-    t2m       = ds[TEMP_VAR]
-    stem      = fpath.stem
-
-    print("Precip fixed")
-
-    # ── 3-Hourly ──────────────────────────────────────────────────────────────
-    ds_3h = xr.Dataset(
-        {
-            TEMP_VAR:   process_temperature_3h(t2m),
-            PRECIP_VAR: process_precip_3h(tp_hourly),
-        },
-        attrs={**ds.attrs, "frequency": "3-hourly"},
-    )
-
-    # ── Daily ─────────────────────────────────────────────────────────────────
-    ds_daily = xr.Dataset(
-        {
-            TEMP_VAR:   process_temperature_daily(t2m),
-            PRECIP_VAR: process_precip_daily(tp_hourly),
-        },
-        attrs={**ds.attrs, "frequency": "daily"},
-    )
-
-    # ── Write both outputs in parallel ────────────────────────────────────────
-    out_3h    = DIR_3H    / f"{stem}_3h.nc"
-    out_daily = DAILY_DIR / f"{stem}_daily.nc"
-
-    print("Writing files")
-
-    write_3h    = ds_3h.to_netcdf(out_3h,    compute=False)
-    write_daily = ds_daily.to_netcdf(out_daily, compute=False)
-
-    with ProgressBar():
-        dask.compute(write_3h, write_daily)
-
-    print(f"  → {out_3h}")
-    print(f"  → {out_daily}")
-    ds.close()
-
 # ── Main ───────────────────────────────────────────────────────────────────────
-files = sorted(HOURLY_DIR.glob("ERA_land_*.nc"))
+# Step 1: open with native on-disk chunks to avoid misalignment warnings
+full_ds = xr.open_mfdataset(
+    "/ocean/projects/ees210011p/shared/ERA5_land/hourly/*.nc", 
+    concat_dim="valid_time", 
+    combine="nested",
+    data_vars="minimal", 
+    coords="minimal",
+    # compact="override",
+    parallel=True,
+    engine="h5netcdf"
+)
 
-if not files:
-    print(f"No files found in {HOURLY_DIR}")
-else:
-    print(f"Found {len(files)} files to process")
-    initial = True
-    for f in files:
-        s = time.time()
-        process_file(f)
-        e = time.time()
-        if initial:
-            print(f"File took {e-s} seconds")
-            print(f"Expect completeion in {(e-s) * len(files)} seconds")
-            initial = False
-    print("\nDone!")
+months = pd.period_range(
+    start=full_ds.time.values[0],
+    end=full_ds.time.values[-1],
+    freq="M"
+)
+
+print("Data ingested")
+
+tp_hourly = fix_precip_accumulation(full_ds[PRECIP_VAR]) * PRECIP_SCALE
+t2m       = full_ds[TEMP_VAR]
+
+print("Precip fixed")
+
+# ── 3-Hourly ──────────────────────────────────────────────────────────────
+ds_3h = xr.Dataset(
+    {
+        TEMP_VAR:   process_temperature_3h(t2m),
+        PRECIP_VAR: process_precip_3h(tp_hourly),
+    },
+    attrs={**full_ds.attrs, "frequency": "3-hourly"},
+)
+
+print("loaded 3hr")
+
+writes_3h = []
+for month in months:
+    monthly = ds_3h.sel(time=str(month))
+    filename = DIR_3H / f"ERA_land_{month.year}_{month.month:02d}.nc"
+    
+    # delayed=True returns a dask.delayed object instead of writing immediately
+    write_job = monthly.to_netcdf(filename, compute=False)
+    writes_3h.append(write_job)
+
+print("writing 3hr")
+with ProgressBar():
+    dask.compute(*writes_3h)
+ds_3h.close()
+print(f"saved 3hr")
+
+# ── Daily ─────────────────────────────────────────────────────────────────
+ds_daily = xr.Dataset(
+    {
+        TEMP_VAR:   process_temperature_daily(t2m),
+        PRECIP_VAR: process_precip_daily(tp_hourly),
+    },
+    attrs={**full_ds.attrs, "frequency": "daily"},
+)
+
+print("loaded daily")
+
+writes_d = []
+for month in months:
+    monthly = ds_daily.sel(time=str(month))
+    filename = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
+    
+    # delayed=True returns a dask.delayed object instead of writing immediately
+    write_job = monthly.to_netcdf(filename, compute=False)
+    writes_d.append(write_job)
+
+print("writing daily")
+with ProgressBar():
+    dask.compute(*writes_d)
+ds_daily.close()
+print(f"saved daily")
