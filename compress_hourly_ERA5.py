@@ -85,8 +85,8 @@ full_ds = xr.open_mfdataset(
 )
 
 months = pd.period_range(
-    start=full_ds.time.values[0],
-    end=full_ds.time.values[-1],
+    start=full_ds.valid_time.values[0],
+    end=full_ds.valid_time.values[-1],
     freq="M"
 )
 
