@@ -81,9 +81,10 @@ full_ds = xr.open_mfdataset(
     coords="minimal",
     # compact="override",
     parallel=True,
-    chunks={"valid_time": 744, "latitude": 85, "longitude": 181},
     engine="h5netcdf"
 )
+
+full_ds = full_ds.chunk({"valid_time": 744, "latitude": 85, "longitude": 181})
 
 months = pd.period_range(
     start=full_ds.valid_time.values[0],
