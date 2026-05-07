@@ -126,9 +126,10 @@ try:
         write_daily = ds_daily.to_netcdf(out_daily, compute=False)
 
         with ProgressBar():
-            dask.compute(write_3h, write_daily)
-
+            dask.compute(write_3h)
         print(f"  → {out_3h}")
+        with ProgressBar():
+            dask.compute(write_daily)
         print(f"  → {out_daily}")
         print()
         break
