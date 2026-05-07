@@ -141,6 +141,9 @@ try:
         ) * PRECIP_SCALE
         t2m = full_ds[TEMP_VAR].sel(valid_time=str(month)).load()
 
+        out_3h    = DIR_3H    / f"ERA_land_{month.year}_{month.month:02d}.nc"
+        out_daily = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
+        
         # ── 3-Hourly ──────────────────────────────────────────────────────────────
         ds_3h = xr.Dataset(
             {
@@ -149,6 +152,7 @@ try:
             },
             attrs={**full_ds.attrs, "frequency": "3-hourly"},
         ).chunk({"valid_time": -1,  "latitude": 85, "longitude": 181})
+
         ds_3h.to_netcdf(out_3h)
         ds_3h.close()
         print("Saved 3hr")
