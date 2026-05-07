@@ -97,8 +97,49 @@ try:
     print("Data ingested")
 
     for month in months:
-        tp_hourly = fix_precip_accumulation(full_ds[PRECIP_VAR].sel(valid_time=str(month))) * PRECIP_SCALE
-        t2m       = full_ds[TEMP_VAR].sel(valid_time=str(month))
+        print(f"Working on {month}")
+
+        # tp_hourly = fix_precip_accumulation(full_ds[PRECIP_VAR].sel(valid_time=str(month))) * PRECIP_SCALE
+        # t2m       = full_ds[TEMP_VAR].sel(valid_time=str(month))
+
+        # # ── 3-Hourly ──────────────────────────────────────────────────────────────
+        # ds_3h = xr.Dataset(
+        #     {
+        #         TEMP_VAR:   process_temperature_3h(t2m),
+        #         PRECIP_VAR: process_precip_3h(tp_hourly),
+        #     },
+        #     attrs={**full_ds.attrs, "frequency": "3-hourly"},
+        # )
+
+        # # ── Daily ─────────────────────────────────────────────────────────────────
+        # ds_daily = xr.Dataset(
+        #     {
+        #         TEMP_VAR:   process_temperature_daily(t2m),
+        #         PRECIP_VAR: process_precip_daily(tp_hourly),
+        #     },
+        #     attrs={**full_ds.attrs, "frequency": "daily"},
+        # )
+
+        # # ── Write both outputs in parallel ────────────────────────────────────────
+        # out_3h    = DIR_3H    / f"ERA_land_{month.year}_{month.month:02d}.nc"
+        # out_daily = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
+
+        # write_3h    = ds_3h.to_netcdf(out_3h,    compute=False)
+        # write_daily = ds_daily.to_netcdf(out_daily, compute=False)
+
+        # with ProgressBar():
+        #     dask.compute(write_3h)
+        # print(f"  → {out_3h}")
+        # with ProgressBar():
+        #     dask.compute(write_daily)
+        # print(f"  → {out_daily}")
+        # print()
+
+        # Eagerly load one month — avoids concurrent read+write
+        tp_hourly = fix_precip_accumulation(
+            full_ds[PRECIP_VAR].sel(valid_time=str(month)).load()
+        ) * PRECIP_SCALE
+        t2m = full_ds[TEMP_VAR].sel(valid_time=str(month)).load()
 
         # ── 3-Hourly ──────────────────────────────────────────────────────────────
         ds_3h = xr.Dataset(
@@ -107,8 +148,10 @@ try:
                 PRECIP_VAR: process_precip_3h(tp_hourly),
             },
             attrs={**full_ds.attrs, "frequency": "3-hourly"},
-        )
-
+        ).chunk({"valid_time": -1,  "latitude": 85, "longitude": 181})
+        ds_3h.to_netcdf(out_3h)
+        ds_3h.close()
+        print("Saved 3hr")
         # ── Daily ─────────────────────────────────────────────────────────────────
         ds_daily = xr.Dataset(
             {
@@ -116,21 +159,10 @@ try:
                 PRECIP_VAR: process_precip_daily(tp_hourly),
             },
             attrs={**full_ds.attrs, "frequency": "daily"},
-        )
-
-        # ── Write both outputs in parallel ────────────────────────────────────────
-        out_3h    = DIR_3H    / f"ERA_land_{month.year}_{month.month:02d}.nc"
-        out_daily = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
-
-        write_3h    = ds_3h.to_netcdf(out_3h,    compute=False)
-        write_daily = ds_daily.to_netcdf(out_daily, compute=False)
-
-        with ProgressBar():
-            dask.compute(write_3h)
-        print(f"  → {out_3h}")
-        with ProgressBar():
-            dask.compute(write_daily)
-        print(f"  → {out_daily}")
+        ).chunk({"valid_time": -1,  "latitude": 85, "longitude": 181})
+        ds_daily.to_netcdf(out_daily)
+        ds_daily.close()
+        print("Saved daily")
         print()
         break
 except Exception:
