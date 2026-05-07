@@ -5,6 +5,7 @@ import dask
 from dask.diagnostics import ProgressBar
 import time
 import pandas as pd
+import traceback
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 HOURLY_DIR   = Path("/ocean/projects/ees210011p/shared/ERA5_land/hourly")
@@ -71,62 +72,65 @@ def process_precip_daily(tp_hourly: xr.DataArray) -> xr.DataArray:
     tp_daily.attrs["long_name"] = "Daily total precipitation"
     return tp_daily
 
-# ── Main ───────────────────────────────────────────────────────────────────────
-# Step 1: open with native on-disk chunks to avoid misalignment warnings
-full_ds = xr.open_mfdataset(
-    "/ocean/projects/ees210011p/shared/ERA5_land/hourly/*.nc", 
-    concat_dim="valid_time", 
-    combine="nested",
-    data_vars="minimal", 
-    coords="minimal",
-    # compact="override",
-    parallel=True,
-    engine="h5netcdf"
-)
-
-full_ds = full_ds.chunk({"valid_time": 744, "latitude": 85, "longitude": 181})
-
-months = pd.period_range(
-    start=full_ds.valid_time.values[0],
-    end=full_ds.valid_time.values[-1],
-    freq="M"
-)
-
-print("Data ingested")
-
-for month in months:
-    tp_hourly = fix_precip_accumulation(full_ds[PRECIP_VAR].sel(valid_time=str(month))) * PRECIP_SCALE
-    t2m       = full_ds[TEMP_VAR].sel(valid_time=str(month))
-
-    # ── 3-Hourly ──────────────────────────────────────────────────────────────
-    ds_3h = xr.Dataset(
-        {
-            TEMP_VAR:   process_temperature_3h(t2m),
-            PRECIP_VAR: process_precip_3h(tp_hourly),
-        },
-        attrs={**full_ds.attrs, "frequency": "3-hourly"},
+try:
+    # ── Main ───────────────────────────────────────────────────────────────────────
+    # Step 1: open with native on-disk chunks to avoid misalignment warnings
+    full_ds = xr.open_mfdataset(
+        "/ocean/projects/ees210011p/shared/ERA5_land/hourly/*.nc", 
+        concat_dim="valid_time", 
+        combine="nested",
+        data_vars="minimal", 
+        coords="minimal",
+        # compact="override",
+        parallel=True,
+        engine="h5netcdf"
     )
 
-    # ── Daily ─────────────────────────────────────────────────────────────────
-    ds_daily = xr.Dataset(
-        {
-            TEMP_VAR:   process_temperature_daily(t2m),
-            PRECIP_VAR: process_precip_daily(tp_hourly),
-        },
-        attrs={**full_ds.attrs, "frequency": "daily"},
+    full_ds = full_ds.chunk({"valid_time": 744, "latitude": 85, "longitude": 181})
+
+    months = pd.period_range(
+        start=full_ds.valid_time.values[0],
+        end=full_ds.valid_time.values[-1],
+        freq="M"
     )
 
-    # ── Write both outputs in parallel ────────────────────────────────────────
-    out_3h    = DIR_3H    / f"ERA_land_{month.year}_{month.month:02d}.nc"
-    out_daily = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
+    print("Data ingested")
 
-    write_3h    = ds_3h.to_netcdf(out_3h,    compute=False)
-    write_daily = ds_daily.to_netcdf(out_daily, compute=False)
+    for month in months:
+        tp_hourly = fix_precip_accumulation(full_ds[PRECIP_VAR].sel(valid_time=str(month))) * PRECIP_SCALE
+        t2m       = full_ds[TEMP_VAR].sel(valid_time=str(month))
 
-    with ProgressBar():
-        dask.compute(write_3h, write_daily)
+        # ── 3-Hourly ──────────────────────────────────────────────────────────────
+        ds_3h = xr.Dataset(
+            {
+                TEMP_VAR:   process_temperature_3h(t2m),
+                PRECIP_VAR: process_precip_3h(tp_hourly),
+            },
+            attrs={**full_ds.attrs, "frequency": "3-hourly"},
+        )
 
-    print(f"  → {out_3h}")
-    print(f"  → {out_daily}")
-    print()
-    break
+        # ── Daily ─────────────────────────────────────────────────────────────────
+        ds_daily = xr.Dataset(
+            {
+                TEMP_VAR:   process_temperature_daily(t2m),
+                PRECIP_VAR: process_precip_daily(tp_hourly),
+            },
+            attrs={**full_ds.attrs, "frequency": "daily"},
+        )
+
+        # ── Write both outputs in parallel ────────────────────────────────────────
+        out_3h    = DIR_3H    / f"ERA_land_{month.year}_{month.month:02d}.nc"
+        out_daily = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
+
+        write_3h    = ds_3h.to_netcdf(out_3h,    compute=False)
+        write_daily = ds_daily.to_netcdf(out_daily, compute=False)
+
+        with ProgressBar():
+            dask.compute(write_3h, write_daily)
+
+        print(f"  → {out_3h}")
+        print(f"  → {out_daily}")
+        print()
+        break
+except Exception:
+    traceback.print_exc()
