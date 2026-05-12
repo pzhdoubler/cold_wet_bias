@@ -82,7 +82,8 @@ try:
         data_vars="minimal", 
         coords="minimal",
         # compact="override",
-        parallel=True,
+        parallel=False,
+        lock=False,
         engine="h5netcdf"
     )
 
