@@ -82,12 +82,11 @@ try:
         data_vars="minimal", 
         coords="minimal",
         # compact="override",
-        parallel=False,
-        lock=False,
+        parallel=True,
+        chunks={"valid_time": 744, "latitude": 85, "longitude": 181},
         engine="h5netcdf"
     )
 
-    full_ds = full_ds.chunk({"valid_time": 744, "latitude": 85, "longitude": 181})
 
     months = pd.period_range(
         start=full_ds.valid_time.values[0],
@@ -136,11 +135,10 @@ try:
         # print(f"  → {out_daily}")
         # print()
 
-        # Eagerly load one month — avoids concurrent read+write
         tp_hourly = fix_precip_accumulation(
-            full_ds[PRECIP_VAR].sel(valid_time=str(month)).load()
+            full_ds[PRECIP_VAR].sel(valid_time=str(month))
         ) * PRECIP_SCALE
-        t2m = full_ds[TEMP_VAR].sel(valid_time=str(month)).load()
+        t2m = full_ds[TEMP_VAR].sel(valid_time=str(month))
 
         out_3h    = DIR_3H    / f"ERA_land_{month.year}_{month.month:02d}.nc"
         out_daily = DAILY_DIR / f"ERA_land_{month.year}_{month.month:02d}.nc"
