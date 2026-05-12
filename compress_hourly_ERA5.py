@@ -83,7 +83,7 @@ try:
         coords="minimal",
         # compact="override",
         parallel=True,
-        engine="h5netcdf"
+        # engine="h5netcdf"
     )
 
     full_ds = full_ds.chunk({"valid_time": 744, "latitude": 85, "longitude": 181})
@@ -167,6 +167,9 @@ try:
         ds_daily.to_netcdf(out_daily)
         ds_daily.close()
         print("Saved daily")
+        
+        tp_hourly.close()
+        t2m.close()
         print()
         break
 except Exception:
