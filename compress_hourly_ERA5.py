@@ -83,7 +83,7 @@ try:
         coords="minimal",
         # compact="override",
         parallel=True,
-        # engine="h5netcdf"
+        engine="h5netcdf"
     )
 
     full_ds = full_ds.chunk({"valid_time": 744, "latitude": 85, "longitude": 181})
@@ -171,6 +171,5 @@ try:
         tp_hourly.close()
         t2m.close()
         print()
-        break
 except Exception:
     traceback.print_exc()
