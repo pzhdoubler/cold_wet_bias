@@ -114,7 +114,7 @@ def read_Daymet_obs(var):
 
     return da
 
-def do_CMIP_regrid(cmip_group, obs):
+def do_CMIP_regrid(cmip_group):
     CMIP_da = xr.open_mfdataset(
         f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
         concat_dim="time", 
@@ -126,10 +126,10 @@ def do_CMIP_regrid(cmip_group, obs):
         engine="h5netcdf"
         ).sel(time=slice("1980-01-01", None))[cmip_group.variable]
     
-    if len(obs["time"]) != len(CMIP_da["time"]):
-        print("obs and CMIP times not aligned.")
-    else:
-        CMIP_da["time"] = obs["time"]
+    cmip_times = pd.DatetimeIndex([
+        pd.Timestamp(str(t)) for t in CMIP_da['time'].values
+    ])
+    CMIP_da['time'] = cmip_times
 
     # add more vars here if needed
     if cmip_group.variable == "pr":
@@ -145,7 +145,10 @@ def do_CMIP_regrid(cmip_group, obs):
 ###################################################
 
 def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
-    bias = cmip_da - obs
+    # align times
+    cmip_da_align , obs_align = xr.align(cmip_da, obs, join='inner', exclude=("lon", "lat"))
+    # do bias
+    bias = cmip_da_align - obs_align
     bias.name = f"{cmip_group.variable}-bias"
     bias_climatology =  bias.groupby("time.month").mean()
     bias_climatology.to_netcdf(cmip_group.make_file_path(SAVE_DIR, end_label))
@@ -188,7 +191,7 @@ if __name__ == "__main__":
         target_cmip_groups = [group for group in cmip_groups if group.variable == var]
         
         for cmip_group in target_cmip_groups:
-            cmip_da = do_CMIP_regrid(cmip_group, obs)
+            cmip_da = do_CMIP_regrid(cmip_group)
             # do whatever analysis needed here
             print("Doing bias ...")
             do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
