@@ -185,11 +185,8 @@ if __name__ == "__main__":
         # read cmip_groups and only use those that match target var
         model_loc = cmip_models_loc / model
         cmip_groups = [CMIP_group(g) for g in list(set(["_".join(f.split("_")[:-1]) for f in os.listdir(model_loc)]))] #crazy line btw
-        target_cmip_groups = [group for group in cmip_groups if group.variable == "var"]
-
-        print(cmip_groups)
-        print(target_cmip_groups)
-
+        target_cmip_groups = [group for group in cmip_groups if group.variable == var]
+        
         for cmip_group in target_cmip_groups:
             cmip_da = do_CMIP_regrid(cmip_group, obs)
             # do whatever analysis needed here
