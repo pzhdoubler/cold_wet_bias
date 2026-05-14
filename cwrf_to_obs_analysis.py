@@ -146,9 +146,9 @@ def do_CMIP_regrid(cmip_group):
 
 def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
     # align times
-    cmip_da_align , obs_align = xr.align(cmip_da, obs, join='inner', exclude=("lon", "lat"))
-    # do bias
-    bias = cmip_da_align - obs_align
+    common_times = np.intersect1d(cmip_da["time"].values, obs["time"].values)
+    bias = cmip_da.sel(time=common_times) - obs.sel(time=common_times)
+    # do bias climatology
     bias.name = f"{cmip_group.variable}-bias"
     bias_climatology =  bias.groupby("time.month").mean()
     bias_climatology.to_netcdf(cmip_group.make_file_path(SAVE_DIR, end_label))
