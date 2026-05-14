@@ -30,6 +30,9 @@ class CMIP_group:
 
         self.base_string = f"{self.variable}_{self.freq}_{self.model}_{self.run}_{self.variant}_{self.grid}"
 
+    def __str__(self):
+        return self.base_string
+
     def get_string_base(self):
         return self.base_string
         
@@ -157,15 +160,14 @@ def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
 if __name__ == "__main__":
     experiment = "CMIP6"
     var = "pr"
+    obs_group = "Daymet"
     SAVE_DIR = Path(f"/ocean/projects/ees210011p/hdoubler/cold_wet_bias/CMIP_bias/{experiment}")
 
     # open obs
-    # ERA5
-    obs_group = "ERA5"
-    obs = read_ERA5_obs(var)
-    # Daymet
-    obs_group = "Daymet"
-    obs = read_Daymet_obs(var)
+    if obs_group == "ERA5":
+        obs = read_ERA5_obs(var)
+    if obs_group == "Daymet":
+        obs = read_Daymet_obs(var)
 
     print(f"{var} obs read")
 
@@ -184,6 +186,9 @@ if __name__ == "__main__":
         model_loc = cmip_models_loc / model
         cmip_groups = [CMIP_group(g) for g in list(set(["_".join(f.split("_")[:-1]) for f in os.listdir(model_loc)]))] #crazy line btw
         target_cmip_groups = [group for group in cmip_groups if group.variable == "var"]
+
+        print(cmip_groups)
+        print(target_cmip_groups)
 
         for cmip_group in target_cmip_groups:
             cmip_da = do_CMIP_regrid(cmip_group, obs)
