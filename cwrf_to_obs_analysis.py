@@ -64,7 +64,7 @@ def get_cwrf_regridder(in_grid, interp_method):
 
 def read_ERA5_obs(var):
     ERA5_ds = xr.open_mfdataset(
-        "/ocean/projects/ees210011p/shared/ERA5_land/regrid/daily/*.nc"
+        "/ocean/projects/ees210011p/shared/ERA5_land/regrid/daily/*.nc",
         concat_dim="time", 
         combine="nested",
         data_vars="minimal", 
@@ -86,7 +86,7 @@ def read_Daymet_obs(var):
     # add more vars here if needed
     if var == "pr":
         Daymet_ds = xr.open_mfdataset(
-            "/ocean/projects/ees210011p/hdoubler/regrid_daily/OBS_PRAVG*.nc"
+            "/ocean/projects/ees210011p/hdoubler/regrid_daily/OBS_PRAVG*.nc",
             concat_dim="time", 
             combine="nested",
             data_vars="minimal", 
@@ -98,7 +98,7 @@ def read_Daymet_obs(var):
         Daymet_ds.close()
     if var == "tas":
         Daymet_ds = xr.open_mfdataset(
-            "/ocean/projects/ees210011p/hdoubler/regrid_daily/OBS_AT2M*.nc"
+            "/ocean/projects/ees210011p/hdoubler/regrid_daily/OBS_AT2M*.nc",
             concat_dim="time", 
             combine="nested",
             data_vars="minimal", 
@@ -172,6 +172,8 @@ if __name__ == "__main__":
     # main CMIP6
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
+
+    models = models[:1]
 
     print(f"Found following models:")
     print(models)
