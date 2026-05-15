@@ -176,6 +176,8 @@ def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
 ################# Main #################
 ###################################################
 
+#CMIP6_run1_fails = ['FGOALS-g3', 'KIOST-ESM', 'KACE-1-0-G', 'ICON-ESM-LR', 'HadGEM3-GC31-LL', 'BCC-ESM1', 'UKESM1-0-LL', 'BCC-CSM2-MR', 'HadGEM3-GC31-MM', 'FGOALS-f3-L', 'SAM0-UNICON']
+
 if __name__ == "__main__":
     experiment = "CMIP6"
     var = "pr"
