@@ -154,7 +154,6 @@ def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
     # align times
     common_times = np.intersect1d(cmip_da["time"].values, obs["time"].values)
     bias = cmip_da.sel(time=common_times) - obs.sel(time=common_times)
-    print("bias calc-ed, saving")
     # do bias climatology
     bias.name = f"{cmip_group.variable}-bias"
     cmip_ds = xr.Dataset({cmip_group.variable : cmip_da})
@@ -180,9 +179,9 @@ if __name__ == "__main__":
 
     # open obs
     if obs_group == "ERA5":
-        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 69, "lon": 65}).persist()
+        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 138, "lon": 195}).persist()
     if obs_group == "Daymet":
-        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 69, "lon": 65}).persist()
+        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 138, "lon": 195}).persist()
 
     print(f"{var} obs read")
 
@@ -190,7 +189,7 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[1:2]
+    models = models[2:3]
 
     print(f"Found following models:")
     print(models)
@@ -201,14 +200,13 @@ if __name__ == "__main__":
         # read cmip_groups and only use those that match target var
         model_loc = cmip_models_loc / model
         cmip_groups = [CMIP_group(g) for g in list(set(["_".join(f.split("_")[:-1]) for f in os.listdir(model_loc)]))] #crazy line btw
-        target_cmip_groups = [group for group in cmip_groups if group.variable == var]
+        cmip_groups = [group for group in cmip_groups if group.variable == var]
         
-        for g, cmip_group in enumerate(target_cmip_groups):
+        for g, cmip_group in enumerate(cmip_groups):
             print(f"working on group {cmip_group.get_string_base()} ({g+1}/{len(cmip_groups)})...")
             cmip_da = do_CMIP_regrid(cmip_group)
-            cmip_da = cmip_da.chunk({"time": -1, "lat": 69, "lon": 65})
+            cmip_da = cmip_da.chunk({"time": -1, "lat": 138, "lon": 195})
             # do whatever analysis needed here
-            print("Doing bias ...")
             do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
 
         print(f"{model} done.")
