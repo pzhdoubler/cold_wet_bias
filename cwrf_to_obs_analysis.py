@@ -127,13 +127,15 @@ def do_CMIP_regrid(cmip_group):
         compat="override",
         parallel=True,
         engine="h5netcdf"
-        ).sel(time=slice("1980", "2014")).chunk({"time": 366})
+        ).chunk({"time": 366})
 
     cmip_times = pd.DatetimeIndex([
         pd.Timestamp(str(t)) for t in CMIP_ds['time'].values
     ])
     CMIP_ds['time'] = cmip_times
     
+    CMIP_ds = CMIP_ds.sel(time=slice("1980", "2014"))
+
     # add more vars here if needed
     if cmip_group.variable == "pr":
         regridder = get_cwrf_regridder(CMIP_ds[cmip_group.variable], "conservative")
