@@ -180,9 +180,9 @@ if __name__ == "__main__":
 
     # open obs
     if obs_group == "ERA5":
-        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 23, "lon": 15})
+        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 46, "lon": 39}).persist()
     if obs_group == "Daymet":
-        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 23, "lon": 15})
+        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 46, "lon": 39}).persist()
 
     print(f"{var} obs read")
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[:1]
+    models = models[1:2]
 
     print(f"Found following models:")
     print(models)
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         
         for cmip_group in target_cmip_groups:
             cmip_da = do_CMIP_regrid(cmip_group)
-            cmip_da = cmip_da.chunk({"time": -1, "lat": 23, "lon": 15})
+            cmip_da = cmip_da.chunk({"time": -1, "lat": 46, "lon": 39})
             # do whatever analysis needed here
             print("Doing bias ...")
             do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
