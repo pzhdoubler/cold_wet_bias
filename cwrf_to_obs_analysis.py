@@ -158,7 +158,7 @@ def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
     bias.name = f"{cmip_group.variable}-bias"
     cmip_ds = xr.Dataset({cmip_group.variable : cmip_da})
     bias_climatology =  cmip_ds.groupby("time.month").mean()
-    write_job = bias_climatology.to_netcdf(cmip_group.make_file_path(SAVE_DIR, end_label), compute=False)
+    write_job = bias_climatology.to_netcdf(cmip_group.make_file_path(SAVE_DIR, end_label), parallel=True, compute=False)
     # Write with progress bar and encoding to reduce file size
     with ProgressBar():
         write_job.compute()
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[2:3]
+    models = models[3:4]
 
     print(f"Found following models:")
     print(models)
