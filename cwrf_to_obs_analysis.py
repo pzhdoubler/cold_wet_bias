@@ -178,7 +178,7 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[:1]
+    models = models[:2]
 
     print(f"Found following models:")
     print(models)
