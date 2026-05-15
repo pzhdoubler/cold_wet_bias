@@ -135,6 +135,9 @@ def do_CMIP_regrid(cmip_group):
     ])
     CMIP_ds['time'] = cmip_times
     
+    # clean up time
+    CMIP_ds = CMIP_ds.sortby("time")
+    CMIP_ds = CMIP_ds.sel(time=~CMIP_ds.indexes["time"].duplicated())
     CMIP_ds = CMIP_ds.sel(time=slice("1980", "2014"))
 
     # add more vars here if needed
