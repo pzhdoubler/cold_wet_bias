@@ -195,25 +195,35 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[4:]
+    models = models[5:]
 
     print(f"Found following models:")
     print(models)
 
+    failed_models = []
 
     for m, model in enumerate(models):
-        print(f"Working on {model} ({m+1}/{len(models)})...")
-        # read cmip_groups and only use those that match target var
-        model_loc = cmip_models_loc / model
-        cmip_groups = [CMIP_group(g) for g in list(set(["_".join(f.split("_")[:-1]) for f in os.listdir(model_loc)]))] #crazy line btw
-        cmip_groups = [group for group in cmip_groups if group.variable == var]
-        
-        for g, cmip_group in enumerate(cmip_groups):
-            print(f"working on group {cmip_group.get_string_base()} ({g+1}/{len(cmip_groups)})...")
-            cmip_da = do_CMIP_regrid(cmip_group)
-            cmip_da = cmip_da.chunk({"time": -1, "lat": 138, "lon": 195})
-            # do whatever analysis needed here
-            do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
+        try:
+            print(f"Working on {model} ({m+1}/{len(models)})...")
+            # read cmip_groups and only use those that match target var
+            model_loc = cmip_models_loc / model
+            cmip_groups = [CMIP_group(g) for g in list(set(["_".join(f.split("_")[:-1]) for f in os.listdir(model_loc)]))] #crazy line btw
+            cmip_groups = [group for group in cmip_groups if group.variable == var]
+            
+            for g, cmip_group in enumerate(cmip_groups):
+                print(f"working on group {cmip_group.get_string_base()} ({g+1}/{len(cmip_groups)})...")
+                cmip_da = do_CMIP_regrid(cmip_group)
+                cmip_da = cmip_da.chunk({"time": -1, "lat": 138, "lon": 195})
+                # do whatever analysis needed here
+                do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
 
-        print(f"{model} done.")
-        print()
+            print(f"{model} done.")
+            print()
+        except Exception as e:
+            failed_models.append(model)
+            print(f"Model {model} failed. Moving on")
+            print(e)
+            print()
+
+    print(f"{len(failed_models)} Failed Models:")
+    print(failed_models)
