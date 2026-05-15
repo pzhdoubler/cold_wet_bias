@@ -72,6 +72,7 @@ def read_ERA5_obs(var):
         combine="nested",
         data_vars="minimal", 
         coords="minimal",
+        compat="override",
         parallel=True,
         engine="h5netcdf"
     ).sel(time=slice("1980", "2014"))
@@ -94,6 +95,7 @@ def read_Daymet_obs(var):
             combine="nested",
             data_vars="minimal", 
             coords="minimal",
+            compat="override",
             parallel=True,
             engine="h5netcdf"
         ).sel(time=slice("1980", "2014"))
@@ -106,6 +108,7 @@ def read_Daymet_obs(var):
             combine="nested",
             data_vars="minimal", 
             coords="minimal",
+            compat="override",
             parallel=True,
             engine="h5netcdf"
         ).sel(time=slice("1980", "2014"))
@@ -115,30 +118,33 @@ def read_Daymet_obs(var):
     return da
 
 def do_CMIP_regrid(cmip_group):
-    CMIP_da = xr.open_mfdataset(
+    CMIP_ds = xr.open_mfdataset(
         f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
         concat_dim="time", 
         combine="nested",
         data_vars="minimal", 
         coords="minimal",
-        # compact="override",
+        compat="override",
         parallel=True,
         engine="h5netcdf"
-        ).sel(time=slice("1980-01-01", None))[cmip_group.variable]
-    
-    cmip_times = pd.DatetimeIndex([
-        pd.Timestamp(str(t)) for t in CMIP_da['time'].values
-    ])
-    CMIP_da['time'] = cmip_times
+        ).sel(time=slice("1980", "2014")).chunk({"time": 366})
 
+    cmip_times = pd.DatetimeIndex([
+        pd.Timestamp(str(t)) for t in CMIP_ds['time'].values
+    ])
+    CMIP_ds['time'] = cmip_times
+    
     # add more vars here if needed
     if cmip_group.variable == "pr":
-        CMIP_da = CMIP_da * 86400
-        regridder = get_cwrf_regridder(CMIP_da, "conservative")
+        regridder = get_cwrf_regridder(CMIP_ds[cmip_group.variable], "conservative")
+        CMIP_da = (regridder(CMIP_ds[cmip_group.variable]) * 86400)
     if cmip_group.variable == "tas":
-        regridder = get_cwrf_regridder(CMIP_da, "bilinear")
+        regridder = get_cwrf_regridder(CMIP_ds[cmip_group.variable], "bilinear")
+        CMIP_da = (regridder(CMIP_ds[cmip_group.variable]))
 
-    return regridder(CMIP_da)
+    CMIP_ds.close()
+    
+    return CMIP_da
 
 ###################################################
 ################# Analysis #################
@@ -148,10 +154,15 @@ def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
     # align times
     common_times = np.intersect1d(cmip_da["time"].values, obs["time"].values)
     bias = cmip_da.sel(time=common_times) - obs.sel(time=common_times)
+    print("bias calc-ed, saving")
     # do bias climatology
     bias.name = f"{cmip_group.variable}-bias"
-    bias_climatology =  bias.groupby("time.month").mean()
-    bias_climatology.to_netcdf(cmip_group.make_file_path(SAVE_DIR, end_label))
+    cmip_ds = xr.Dataset({cmip_group.variable : cmip_da})
+    bias_climatology =  cmip_ds.groupby("time.month").mean()
+    write_job = bias_climatology.to_netcdf(cmip_group.make_file_path(SAVE_DIR, end_label), compute=False)
+    # Write with progress bar and encoding to reduce file size
+    with ProgressBar():
+        write_job.compute()
 
 # def do_quantile_compare(quantile, cmip_group, cmip_da, obs, SAVE_DIR, end_label):
 #     pass
@@ -165,12 +176,13 @@ if __name__ == "__main__":
     var = "pr"
     obs_group = "Daymet"
     SAVE_DIR = Path(f"/ocean/projects/ees210011p/hdoubler/cold_wet_bias/CMIP_bias/{experiment}")
+    TEMP_DIR = Path(f"/ocean/projects/ees210011p/hdoubler/cold_wet_bias/temp/{experiment}")
 
     # open obs
     if obs_group == "ERA5":
-        obs = read_ERA5_obs(var)
+        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 23, "lon": 15})
     if obs_group == "Daymet":
-        obs = read_Daymet_obs(var)
+        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 23, "lon": 15})
 
     print(f"{var} obs read")
 
@@ -178,10 +190,11 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[:2]
+    models = models[:1]
 
     print(f"Found following models:")
     print(models)
+
 
     for model in models:
         print(f"Working on {model}...")
@@ -192,10 +205,10 @@ if __name__ == "__main__":
         
         for cmip_group in target_cmip_groups:
             cmip_da = do_CMIP_regrid(cmip_group)
+            cmip_da = cmip_da.chunk({"time": -1, "lat": 23, "lon": 15})
             # do whatever analysis needed here
             print("Doing bias ...")
             do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
 
-            cmip_da.close()
         print(f"{model} done.")
         print()
