@@ -185,9 +185,9 @@ if __name__ == "__main__":
 
     # open obs
     if obs_group == "ERA5":
-        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 138, "lon": 195}).persist()
+        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 69, "lon": 65}).persist()
     if obs_group == "Daymet":
-        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 138, "lon": 195}).persist()
+        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 69, "lon": 65}).persist()
 
     print(f"{var} obs read")
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         for g, cmip_group in enumerate(cmip_groups):
             print(f"working on group {cmip_group.get_string_base()} ({g+1}/{len(cmip_groups)})...")
             cmip_da = do_CMIP_regrid(cmip_group)
-            cmip_da = cmip_da.chunk({"time": -1, "lat": 138, "lon": 195})
+            cmip_da = cmip_da.chunk({"time": -1, "lat": 69, "lon": 65})
             # do whatever analysis needed here
             do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
 
