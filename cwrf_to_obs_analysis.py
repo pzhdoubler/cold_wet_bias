@@ -126,7 +126,8 @@ def do_CMIP_regrid(cmip_group):
         coords="minimal",
         compat="override",
         parallel=True,
-        engine="h5netcdf"
+        engine="h5netcdf",
+        use_cftime=True
         ).chunk({"time": 366})
 
     cmip_times = pd.DatetimeIndex([
