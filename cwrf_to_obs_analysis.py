@@ -180,9 +180,9 @@ if __name__ == "__main__":
 
     # open obs
     if obs_group == "ERA5":
-        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 46, "lon": 39}).persist()
+        obs = read_ERA5_obs(var).chunk({"time": -1, "lat": 69, "lon": 65}).persist()
     if obs_group == "Daymet":
-        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 46, "lon": 39}).persist()
+        obs = read_Daymet_obs(var).chunk({"time": -1, "lat": 69, "lon": 65}).persist()
 
     print(f"{var} obs read")
 
@@ -196,16 +196,17 @@ if __name__ == "__main__":
     print(models)
 
 
-    for model in models:
-        print(f"Working on {model}...")
+    for m, model in enumerate(models):
+        print(f"Working on {model} ({m+1}/{len(models)})...")
         # read cmip_groups and only use those that match target var
         model_loc = cmip_models_loc / model
         cmip_groups = [CMIP_group(g) for g in list(set(["_".join(f.split("_")[:-1]) for f in os.listdir(model_loc)]))] #crazy line btw
         target_cmip_groups = [group for group in cmip_groups if group.variable == var]
         
-        for cmip_group in target_cmip_groups:
+        for g, cmip_group in enumerate(target_cmip_groups):
+            print(f"working on group {cmip_group.get_string_base()} ({g+1}/{len(cmip_groups)})...")
             cmip_da = do_CMIP_regrid(cmip_group)
-            cmip_da = cmip_da.chunk({"time": -1, "lat": 46, "lon": 39})
+            cmip_da = cmip_da.chunk({"time": -1, "lat": 69, "lon": 65})
             # do whatever analysis needed here
             print("Doing bias ...")
             do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
