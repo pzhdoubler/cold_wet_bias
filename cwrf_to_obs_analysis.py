@@ -61,6 +61,12 @@ def get_cwrf_regridder(in_grid, interp_method):
     
     return rg
 
+def safe_dt_convert(t):
+    try:
+        return np.datetime64(str(t))
+    except:
+        return np.datetime64("NaT")
+
 ###################################################
 ################# Readers #################
 ###################################################
