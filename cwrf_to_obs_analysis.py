@@ -80,7 +80,7 @@ def read_ERA5_obs(var):
         coords="minimal",
         compat="override",
         parallel=True,
-        engine="h5netcdf"
+        engine="netcdf4"
     ).sel(time=slice("1980", "2014"))
 
     # add more vars here if needed
@@ -103,7 +103,7 @@ def read_Daymet_obs(var):
             coords="minimal",
             compat="override",
             parallel=True,
-            engine="h5netcdf"
+            engine="netcdf4"
         ).sel(time=slice("1980", "2014"))
         da = Daymet_ds["PRAVG"]
         Daymet_ds.close()
@@ -116,7 +116,7 @@ def read_Daymet_obs(var):
             coords="minimal",
             compat="override",
             parallel=True,
-            engine="h5netcdf"
+            engine="netcdf4"
         ).sel(time=slice("1980", "2014"))
         da = Daymet_ds["AT2M"]
         Daymet_ds.close()
