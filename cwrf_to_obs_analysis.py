@@ -123,9 +123,9 @@ def read_Daymet_obs(var):
 
     return da
 
-def do_CMIP_regrid(cmip_group):
+def do_CMIP_regrid(cmip_group, experiment):
     CMIP_ds = xr.open_mfdataset(
-        f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
+        f"/ocean/projects/ees210011p/shared/{experiment}/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
         concat_dim="time", 
         combine="nested",
         data_vars="minimal", 
@@ -226,7 +226,7 @@ if __name__ == "__main__":
             
             for g, cmip_group in enumerate(cmip_groups):
                 print(f"working on group {cmip_group.get_string_base()} ({g+1}/{len(cmip_groups)})...")
-                cmip_da = do_CMIP_regrid(cmip_group)
+                cmip_da = do_CMIP_regrid(cmip_group, experiment)
                 cmip_da = cmip_da.chunk({"time": -1, "lat": 138, "lon": 195})
                 # do whatever analysis needed here
                 do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, f"{obs_group}_bias")
