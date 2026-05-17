@@ -124,31 +124,17 @@ def read_Daymet_obs(var):
     return da
 
 def do_CMIP_regrid(cmip_group):
-    try:
-        CMIP_ds = xr.open_mfdataset(
-            f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
-            concat_dim="time", 
-            combine="nested",
-            data_vars="minimal", 
-            coords="minimal",
-            compat="override",
-            parallel=True,
-            engine="h5netcdf",
-            use_cftime=True
-            )
-    except:
-        print("h5netcdf failed, trying netcdf4")
-        CMIP_ds = xr.open_mfdataset(
-            f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
-            concat_dim="time", 
-            combine="nested",
-            data_vars="minimal", 
-            coords="minimal",
-            compat="override",
-            parallel=False,
-            engine="netcdf4",
-            use_cftime=True
-            )
+    CMIP_ds = xr.open_mfdataset(
+        f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
+        concat_dim="time", 
+        combine="nested",
+        data_vars="minimal", 
+        coords="minimal",
+        compat="override",
+        parallel=True,
+        engine="h5netcdf",
+        use_cftime=True
+        )
     
     # clean up time
     CMIP_ds = CMIP_ds.sortby("time")
@@ -207,7 +193,7 @@ def do_bias_compare(cmip_group, cmip_da, obs, SAVE_DIR, end_label):
 #CMIP6_run1_fails = ['FGOALS-g3', 'KIOST-ESM', 'KACE-1-0-G', 'ICON-ESM-LR', 'HadGEM3-GC31-LL', 'BCC-ESM1', 'UKESM1-0-LL', 'BCC-CSM2-MR', 'HadGEM3-GC31-MM', 'FGOALS-f3-L', 'SAM0-UNICON']
 
 if __name__ == "__main__":
-    experiment = "CMIP6"
+    experiment = "CMIP6_hires"
     var = "pr"
     obs_group = "Daymet"
     SAVE_DIR = Path(f"/ocean/projects/ees210011p/hdoubler/cold_wet_bias/CMIP_bias/{experiment}")
@@ -224,8 +210,6 @@ if __name__ == "__main__":
     # main CMIP6
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
-
-    models = ['FGOALS-g3', 'KIOST-ESM', 'KACE-1-0-G', 'ICON-ESM-LR', 'HadGEM3-GC31-LL', 'BCC-ESM1', 'UKESM1-0-LL', 'BCC-CSM2-MR', 'HadGEM3-GC31-MM', 'FGOALS-f3-L', 'SAM0-UNICON']
 
     print(f"Found following models:")
     print(models)
