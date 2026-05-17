@@ -118,28 +118,50 @@ def read_Daymet_obs(var):
     return da
 
 def do_CMIP_regrid(cmip_group):
-    CMIP_ds = xr.open_mfdataset(
-        f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
-        concat_dim="time", 
-        combine="nested",
-        data_vars="minimal", 
-        coords="minimal",
-        compat="override",
-        parallel=True,
-        engine="h5netcdf",
-        use_cftime=True
-        ).chunk({"time": 366})
-
-    cmip_times = pd.DatetimeIndex([
-        pd.Timestamp(str(t)) for t in CMIP_ds['time'].values
-    ])
-    CMIP_ds['time'] = cmip_times
+    try:
+        CMIP_ds = xr.open_mfdataset(
+            f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
+            concat_dim="time", 
+            combine="nested",
+            data_vars="minimal", 
+            coords="minimal",
+            compat="override",
+            parallel=True,
+            engine="h5netcdf",
+            use_cftime=True
+            )
+    except:
+        print("h5netcdf failed, trying netcdf4")
+        CMIP_ds = xr.open_mfdataset(
+            f"/ocean/projects/ees210011p/shared/CMIP6/daily/{cmip_group.model}/{cmip_group.get_string_base()}*.nc", 
+            concat_dim="time", 
+            combine="nested",
+            data_vars="minimal", 
+            coords="minimal",
+            compat="override",
+            parallel=True,
+            engine="netcdf4",
+            use_cftime=True
+            )
     
     # clean up time
     CMIP_ds = CMIP_ds.sortby("time")
     CMIP_ds = CMIP_ds.sel(time=~CMIP_ds.indexes["time"].duplicated())
     CMIP_ds = CMIP_ds.sel(time=slice("1980", "2014"))
+    valid_times = np.array([
+        t for t in CMIP_ds['time'].values if ~np.isnat(safe_dt_convert(t))
+    ])
+    CMIP_ds = CMIP_ds.sel(time=valid_times)
+    CMIP_ds['time'] = pd.DatetimeIndex([
+        safe_dt_convert(t) for t in CMIP_ds['time'].values
+    ])
 
+    # clean up latitude/longitude
+    if "latitude" in CMIP_ds.dims:
+        CMIP_ds = CMIP_ds.rename({'latitude': 'lat'})
+    if "longitude" in CMIP_ds.dims:
+        CMIP_ds = CMIP_ds.rename({'longitude': 'lon'})
+    
     # add more vars here if needed
     if cmip_group.variable == "pr":
         regridder = get_cwrf_regridder(CMIP_ds[cmip_group.variable], "conservative")
@@ -197,7 +219,7 @@ if __name__ == "__main__":
     cmip_models_loc = Path(f"/ocean/projects/ees210011p/shared/{experiment}/daily")
     models = os.listdir(cmip_models_loc)
 
-    models = models[5:]
+    models = ['FGOALS-g3', 'KIOST-ESM', 'KACE-1-0-G', 'ICON-ESM-LR', 'HadGEM3-GC31-LL', 'BCC-ESM1', 'UKESM1-0-LL', 'BCC-CSM2-MR', 'HadGEM3-GC31-MM', 'FGOALS-f3-L', 'SAM0-UNICON']
 
     print(f"Found following models:")
     print(models)
